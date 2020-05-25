@@ -1,7 +1,9 @@
 import torchvision.transforms as transforms
-from datasetloader.data_pipe import load_bin, load_mx_rec
+from data_pipe import load_bin, load_mx_rec
 import argparse
 from pathlib import Path
+import sys
+sys.path.append('..')
 from config import configurations
 
 if __name__ == '__main__':

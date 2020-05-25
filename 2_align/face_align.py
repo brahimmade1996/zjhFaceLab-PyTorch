@@ -17,6 +17,9 @@ if __name__ == '__main__':
     source_root = args.source_root # specify your source dir
     dest_root = args.dest_root # specify your destination dir
     crop_size = args.crop_size # specify size of aligned faces, align and crop with padding
+
+    source_root = '../data/zperson/all'
+    dest_root   = '../data/zperson/all'
     scale = crop_size / 112.
     reference = get_reference_facial_points(default_square = True) * scale
 
@@ -43,16 +46,19 @@ if __name__ == '__main__':
                 print("{} is discarded due to non-detected landmarks!".format(os.path.join(source_root, subfolder, image_name)))
                 continue
 
-            saveAllFace=True
+            saveAllExistFace=True
             facecnt=1
-            if saveAllFace == False:
+            if saveAllExistFace:
                 facecnt=len(landmarks)
             draw=ImageDraw.Draw(img)
             for i in range(facecnt):
                 facial5points = [[landmarks[i][j], landmarks[i][j + 5]] for j in range(5)]
 
+                facial5points_tuple=[(landmarks[i][j],landmarks[i][j+5]) for j in range(5)]
+                draw.polygon(facial5points_tuple,fill= (255, 0, 0))
+
                 warped_face = warp_and_crop_face(np.array(img), facial5points, reference, crop_size=(crop_size, crop_size))
                 img_warped = Image.fromarray(warped_face)
                 dstimage_name = '.'.join(image_name.split('.')[:-1]) + '_aligned_%d.jpg'%i
                 img_warped.save(os.path.join(dest_root, subfolder, dstimage_name))
-            #img.save(os.path.join(dest_root, subfolder,'.'.join(image_name.split('.')[:-1]) + '_facial5points.jpg'))
+            img.save(os.path.join(dest_root, subfolder,'.'.join(image_name.split('.')[:-1]) + '_0facial5points.jpg'))
