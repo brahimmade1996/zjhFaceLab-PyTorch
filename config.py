@@ -1,37 +1,52 @@
+from easydict import EasyDict as edict
+from pathlib import Path
 import torch
+from torch.nn import CrossEntropyLoss
+from torchvision import transforms as trans
 
-
-configurations = {
-    1: dict(
-        SEED = 1337, # random seed for reproduce results
-
-        DATA_ROOT = 'D:/OpenSource/FaceCNN/Code/zjhFaceLab-PyTorch/data/zperson/', # the parent root where your train/val/test data are stored
-        MODEL_ROOT = 'D:/OpenSource/FaceCNN/model/', # the root to buffer your checkpoints
-        LOG_ROOT = 'D:/OpenSource/FaceCNN/model/log', # the root to log your train/val status
-        BACKBONE_RESUME_ROOT = './', # the root to resume training from a saved checkpoint
-        HEAD_RESUME_ROOT = './', # the root to resume training from a saved checkpoint
-
-        BACKBONE_NAME = 'IR_50', # support: ['ResNet_50', 'ResNet_101', 'ResNet_152', 'IR_50', 'IR_101', 'IR_152', 'IR_SE_50', 'IR_SE_101', 'IR_SE_152']
-        HEAD_NAME = 'ArcFace', # support:  ['Softmax', 'ArcFace', 'CosFace', 'SphereFace', 'Am_softmax']
-        LOSS_NAME = 'Softmax', # support: ['Focal', 'Softmax']
-
-        INPUT_SIZE = [112, 112], # support: [112, 112] and [224, 224]
-        RGB_MEAN = [0.5, 0.5, 0.5], # for normalize inputs to [-1, 1]
-        RGB_STD = [0.5, 0.5, 0.5],
-        EMBEDDING_SIZE = 512, # feature dimension
-        BATCH_SIZE = 64,
-        DROP_LAST = True, # whether drop the last batch to ensure consistent batch_norm statistics
-        LR = 0.1, # initial LR
-        NUM_EPOCH = 25, # total epoch number (use the firt 1/25 epochs to warm up)
-        WEIGHT_DECAY = 5e-4, # do not apply to batch_norm parameters
-        MOMENTUM = 0.9,
-        #STAGES = [35, 65, 95], # epoch stages to decay learning rate
-        STAGES = [5, 14, 22], # epoch stages to decay learning rate
-        DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-        MULTI_GPU = False, # flag to use multiple GPUs; if you choose to train with single GPU, you should first run "export CUDA_VISILE_DEVICES=device_id" to specify the GPU card you want to use
-        #GPU_ID = [0, 1, 2, 3], # specify your GPU ids
-        GPU_ID = None,# zjh: None if only cpu valid
-        PIN_MEMORY = True,
-        NUM_WORKERS = 0,
-),
-}
+def get_config(training = True):
+    conf = edict()
+    conf.data_path = Path('data')
+    conf.work_path = Path('work_space/')
+    conf.model_path = conf.work_path/'models'
+    conf.model_name = 'model_ir50_ms1m_epoch120.pth'
+    conf.log_path = conf.work_path/'log'
+    conf.save_path = conf.work_path/'save'
+    conf.input_size = [112,112]
+    conf.embedding_size = 512
+    conf.use_mobilfacenet = False
+    conf.net_depth = 50
+    conf.drop_ratio = 0.6
+    conf.net_mode = 'ir' # or 'ir_se'
+    conf.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    conf.test_transform = trans.Compose([
+                    trans.ToTensor(),
+                    trans.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+                ])
+    conf.data_mode = 'emore'
+    conf.vgg_folder = conf.data_path/'faces_vgg_112x112'
+    conf.ms1m_folder = conf.data_path/'faces_ms1m_112x112'
+    conf.emore_folder = conf.data_path/'faces_emore'
+    conf.batch_size = 100 # irse net depth 50 
+#   conf.batch_size = 200 # mobilefacenet
+#--------------------Training Config ------------------------    
+    if training:        
+        conf.log_path = conf.work_path/'log'
+        conf.save_path = conf.work_path/'save'
+    #     conf.weight_decay = 5e-4
+        conf.lr = 1e-3
+        conf.milestones = [12,15,18]
+        conf.momentum = 0.9
+        conf.pin_memory = True
+#         conf.num_workers = 4 # when batchsize is 200
+        conf.num_workers = 3
+        conf.ce_loss = CrossEntropyLoss()    
+#--------------------Inference Config ------------------------
+    else:
+        conf.facebank_path = conf.data_path/'facebank'
+        conf.threshold = 1.5
+        conf.face_limit = 1000
+        #when inference, at maximum detect 10 faces in one image, my laptop is slow
+        conf.min_face_size = 30
+        # the larger this value, the faster deduction, comes with tradeoff in small faces
+    return conf
